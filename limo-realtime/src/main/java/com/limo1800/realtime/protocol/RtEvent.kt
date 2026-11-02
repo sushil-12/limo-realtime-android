@@ -104,6 +104,26 @@ sealed interface RtEvent {
         val data: JsonObject,
     ) : RtEvent
 
+    /**
+     * Traffic-aware ETA from limo-rt (`ride.eta`, eta_v 1). Not durable: latest wins.
+     * [finalDurationS] / [finalArriveAtMs] are set on multi-stop rides (to the last dropoff).
+     */
+    data class Eta(
+        override val rideId: Long,
+        /** `pickup`, `stop` or `dropoff`. */
+        val leg: String,
+        val stopNumber: Int?,
+        val totalStops: Int?,
+        val durationS: Int,
+        val distanceM: Int,
+        val arriveAtMs: Long,
+        val finalDurationS: Int?,
+        val finalArriveAtMs: Long?,
+        /** Encoded polyline of the leg: draw it, snap to it, trim it. */
+        val routePolyline: String?,
+        val reason: String?,
+    ) : RtEvent
+
     data class ServerError(override val rideId: Long?, val code: String, val retry: Boolean) : RtEvent
 
     /** A type this build doesn't know. Kept so newer servers never break older apps. */
@@ -155,6 +175,23 @@ sealed interface RtEvent {
                 )
                 "driver.presence" -> DriverPresence(ride ?: return null, d.bool("online") ?: true, d.long("last_seen"))
                 "resync.required" -> ResyncRequired(ride ?: return null, d.string("reason"))
+                "ride.eta" -> {
+                    val target = d.obj("target")
+                    val final = d.obj("final")
+                    Eta(
+                        rideId = ride ?: return null,
+                        leg = d.string("leg") ?: return null,
+                        stopNumber = target?.long("number")?.toInt(),
+                        totalStops = target?.long("total")?.toInt(),
+                        durationS = d.long("duration_s")?.toInt() ?: return null,
+                        distanceM = d.long("distance_m")?.toInt() ?: 0,
+                        arriveAtMs = d.long("arrive_at") ?: return null,
+                        finalDurationS = final?.long("duration_s")?.toInt(),
+                        finalArriveAtMs = final?.long("arrive_at"),
+                        routePolyline = d.obj("route")?.string("polyline"),
+                        reason = d.string("reason"),
+                    )
+                }
                 "notification" -> Notification(
                     rideId = ride,
                     id = d.string("id"),

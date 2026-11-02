@@ -171,9 +171,9 @@ class RealtimeClientTest {
     fun `unknown types are passed through, never fatal`() = runTest {
         val h = Harness(this)
         h.connectAndWelcome()
-        h.server("""{"v":1,"type":"ride.eta","ride_id":"100","data":{"duration_s":240}}""")
+        h.server("""{"v":1,"type":"ride.something_new","ride_id":"100","data":{"x":1}}""")
         h.server("not json")
-        assertEquals("ride.eta", h.events.filterIsInstance<RtEvent.Unknown>().single().type)
+        assertEquals("ride.something_new", h.events.filterIsInstance<RtEvent.Unknown>().single().type)
         assertTrue(h.client.state.value is ConnectionState.Connected)
     }
 
