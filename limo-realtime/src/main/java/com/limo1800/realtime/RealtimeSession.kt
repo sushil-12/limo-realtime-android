@@ -100,9 +100,12 @@ class RealtimeSession(
     suspend fun sendStatus(request: StatusRequest): SendResult =
         outbox.sendStatus(request).also { if (it is SendResult.Queued) scheduleOutboxWorker() }
 
-    /** Returns the client_msg_id of the optimistic bubble. */
-    suspend fun sendChat(rideId: Long, body: String): String {
-        val id = outbox.sendChat(rideId, body)
+    /**
+     * Returns the client_msg_id of the optimistic bubble. Pass [clientMsgId] when the app
+     * has already drawn that bubble under its own id (the server echoes it back).
+     */
+    suspend fun sendChat(rideId: Long, body: String, clientMsgId: String = java.util.UUID.randomUUID().toString()): String {
+        val id = outbox.sendChat(rideId, body, clientMsgId)
         if (outbox.entries.value.any { it.key == id }) scheduleOutboxWorker()
         return id
     }
